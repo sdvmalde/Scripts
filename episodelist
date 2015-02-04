@@ -1,0 +1,47 @@
+#! /bin/bash
+
+function reset {
+    rm -f ~/.series/*
+    exit 1
+}
+
+getopts 'r' option
+[[ $option = 'r' ]] && reset
+
+# set path to data dir
+data="/home/steven/.series/"
+
+# check for init
+[ -d ${data} ] || mkdir ${data}
+
+# get series title and link address
+official=$(echo "$@" | tr '/' '-')
+series=$(echo "$@" | tr ' ' '_')
+link="http://en.wikipedia.org/wiki/list_of_${series}_episodes"
+series=$(echo "$series" | tr '/' '-')
+episodes="${data}${series}"
+touch $episodes
+
+# see if series is cached, if not get episode list from wikipedia
+[ -f "${episodes}.eps" ] || wget -qO - ${link} | awk -F '<|>' -v series="${official}" '
+/id="ep/ { 
+    getline
+    episode = $3
+    if (episode == 1)
+        season++
+    printstring = (season > 9) ? season : ("0" season)
+    printstring = printstring "E" ((episode > 9) ? episode : "0" episode)
+}
+/summary/ {
+    title = ($5 ~ "^[ \t\"]*$") ? $3 : $5
+    gsub(/\//, "-", title)
+    gsub(/^[^"]*"|"[^"]*$/, "", title)
+    gsub(/&amp;/, "\\&", title)
+    if (title !~ "^[ \t\"]*$")
+        print series " - S" printstring " - " title 
+} 
+' > ${episodes}.eps
+
+rm ${episodes}
+
+cat "${episodes}.eps"

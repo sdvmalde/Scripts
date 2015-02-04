@@ -1,0 +1,43 @@
+#! /bin/bash
+
+editor="/home/steven/.wine/drive_c/Program Files/AdvanceMap.exe"
+files="/home/steven/Documents/pokemon"
+name="fire_red.gba"
+previous="${files}/.bakgba"
+game="${files}/${name}"
+tmp=".tmp.gba"
+
+[ -d $previous ] || mkdir $previous
+
+function restore {
+    cd ${previous}
+    mv ${tmp} ${game}
+    exit 1
+}
+
+function play {
+    gvba "$game"
+}
+
+function edit {
+    cd ${previous}
+    cp "$game" "$tmp"
+    wine "$editor"
+    echo "Test version?[Y/n]"
+    read line
+    [[ $line =~ [Yy].* ]] && play
+    echo "Save gba version?[Y/n]"
+    read line
+    [[ $line =~ [Yy].* ]] || restore
+    for i in {5..1}
+    do
+        mv -f 2>/dev/null "${i}_${name}" "$((${i}+1))_$name"
+    done
+    mv "${tmp}" "1_${name}"
+}
+
+getopts "e" option
+
+[[ "$option" = "e" ]] && edit || play 
+
+

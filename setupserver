@@ -1,0 +1,7 @@
+#! /bin/bash
+
+
+sudo  mount -t vfat -o uid=plex,gid=nogroup /dev/sdb1 /media/data ||
+sudo  mount -t vfat -o uid=plex,gid=nogroup /dev/sdc1 /media/data || 
+sudo  mount -t vfat -o uid=plex,gid=nogroup /dev/sdd1 /media/data 
+

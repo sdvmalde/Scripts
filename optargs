@@ -1,0 +1,75 @@
+#! /bin/bash
+
+OPT_STRING="$1"
+OPTION="$2"
+OPT_ARG="$3"
+__OPTIND__="${__OPTIND__:-1}"
+OPTIND=$__OPTIND__
+shift 3
+
+ARGS=${ARGS:-"$@"}
+ARGS=$(sed 's/^..//g' <<< "$ARGS")
+echo "export ARGS=\"$ARGS\""
+
+
+#DEBUG
+echo "OPT_STRING=$OPT_STRING
+ARGS=$ARGS
+OPTION=$OPTION
+OPT_ARG=$OPT_ARG
+$2" >&2
+
+echo false
+
+((__OPTIND__++))
+
+
+
+empty=0
+res=$(echo $1 | tail -c +3)
+
+# short options
+if [[ $1 =~ ^-[^-] ]]; then
+    offset=0
+    opt=$(expr substr "$1" 2 1)
+    $(grep " $opt " <<< " $OPT_STRING ")
+    arg=$(sed "s/.* \([:?]\?\)${opt} .*/\1/" <<< $OPT_STRING)
+    [[ $(wc -m <<< $1) -gt 3 ]] || empty=1 && newopts="-$res"
+# long option
+elif [[ $1 =~ ^-- ]]; then
+    offset=1
+    opt=$res
+    arg=$(sed "s/.*\([:?]\?\). $OPTION .*/\1/" <<< $OPT_STRING)
+else
+# no more options, caution here for optional value
+    exit 2
+fi
+echo >&2 $arg
+
+# parse argument
+if [[ $arg = '' ]] || ( [[ $arg = '?' ]] && [[ $3 =~ ^- ]] ); then
+    next=$2
+else
+    arg=$2
+    ((offset++))
+    next=$3
+fi
+
+#( [[ $next = '--'  ]] || (($empty)) )  && (((offset++)); exit 1)
+#((__OPTIND__+=$offset))
+#shift $offset
+
+#[ -z "$newopts" ] && eval $ARGS="$@" || ( eval $ARGS="${newopts}$@" )
+
+# set variables
+echo "
+export __OPTIND__=$__OPTIND__
+OPTIND=$__OPTIND__
+$OPT_ARG=$arg
+$OPTION=$opt
+export ARGS=\"$ARGS\"
+"
+
+# echo true or false
+
+exit 0

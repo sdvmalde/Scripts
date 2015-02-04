@@ -1,0 +1,125 @@
+#! /bin/bash
+
+# function to clean up and exit
+function clean_up {
+    find . -regextype sed -regex '.*\.\(names\|episodes\|mapping\|tmp\)' -exec rm {} \;
+    exit 0
+}
+
+# Error, number of episodes differs from media files
+function episode_missing {
+    echo "E: number of episodes from wikipedia and media files differ, check for 
+missing media. It's possible that some episodes are combined as double 
+episode. Run script with flag -f to manually fix the episode listing."
+    echo "Alternatively continuation is possible, it may be easy to fix the mapping in 
+a later stage. Continue? [Yy/Nn]"
+    read input
+    [[ $input =~ [Yy].* ]] || exit 1
+}
+
+# function to fix episode list manually, problem arises above
+function fix_manually {
+    cashe=$(echo "$@" | tr ' ' '_')
+    vim "$data$cashe.eps"
+    echo "Continue? [Yy/Nn]"
+    read input
+    [[ $input =~ [Yy].* ]] || exit 2
+}
+
+# function where user can opt to change mapping himself
+function change_mapping {
+    echo "Mapping can be changed manually if error is minimal."
+    echo "Change mapping now (do not alter format)? [Yy/Nn]"
+    read input
+    [[ $input =~ [Yy].* ]] || exit 3
+    vim .mapping
+    sed 's/\t/&-->\t/' .mapping
+    echo "Apply mapping? [Yy/Nn]"
+    read input
+    [[ $input =~ [Yy].* ]] || exit 4
+}
+
+# function to return early when series dir doesn't exist
+function invalid_location {
+    echo "Invalid location, no series found..."
+    exit 5
+}
+
+# set workbench variable (where data is located)
+data="/home/steven/.series/"
+
+# f flag to fix episode listing manually
+fix=false
+clean=false
+getopts 'fc' option
+if [[ $option = 'f' ]]
+then 
+    fix=true
+    shift
+else
+    [[ $option = 'c' ]] && clean_up
+fi
+
+# get path to series
+series="$1"
+shift
+
+[ -d "${series}" ] || invalid_location
+
+# ger formal series name
+formalname="$@"
+name=$(echo "$@" | tr '/' '-')
+
+# fix file
+[ $fix = true ] && fix_manually $name
+
+# rename directory containing seasons to formal name
+cd "${series}/.."
+[[ ${series} = ${name} ]] || mv "${series}" "${name}"
+cd "${name}"
+
+# rename season dirs to proper season naming conventions
+find . -mindepth 1 -maxdepth 1 -type d | sed 's/^..//' | sort | awk -F '\t' '{
+    gsub(/ /, "\\ ", $1)
+    gsub(/'\''/, "\\'\''", $1)
+    nr = (NR > 9) ? NR : "0" NR
+    season = "Season\\ " nr
+    gsub(/'\''/, "\\'\''", season)
+    if ($1 !~ /Season\\ [0-q9][0-9]/)
+        system("mv "$1" "season)
+}'
+
+# get episode names TODO uncomment
+episodelist ${formalname} | sed 's/[&()]/\\&/g' | sed 's/[?:;\/]//g' > .names
+
+# remove episodes starting with ._
+
+# get episodes of all seasons
+find . -type f -regextype sed -regex ".*/[^\.][^_][^/]*\(mkv\|avi\|mp4\)" |  sed 's/^..//' | sort | sed 's/\&/a\\\&/g' | sed 's/[&()]/\\&/g' > .episodes
+
+# check for missing or redundant data
+[[ $(cat .episodes | wc -l) -eq $(cat .names | wc -l) ]] || episode_missing
+
+# ask user for input, mapping correct?
+paste -d '\t'  .episodes .names | tee .mapping | sed 's/\t/&-->\t/' 
+echo "Process these filename changes? [Yy/Nn]"
+read input
+[[ $input =~ [Yy].* ]] || change_mapping
+
+sed 's/\.\(avi\|mkv\|mp4\)/\.srt/' .mapping > .mapping_subs
+
+awk -F '\t' '{
+    gsub(/ /, "\\ ", $1)
+    gsub(/ /, "\\ ", $2)
+    gsub(/'\''/, "\\'\''", $2)
+    gsub(/'\''/, "\\'\''", $1)
+    dir = ext = $1
+    sub(/\/.*/, "/", dir)
+    sub(/.*\./, "", ext)
+    if (NR != FNR)
+        ext = 'srt'
+    $2 = dir $2 "." ext
+    system("mv 2>/dev/null "$1" "$2" >/dev/null 2>&1")
+}' .mapping .mapping_subs
+
+

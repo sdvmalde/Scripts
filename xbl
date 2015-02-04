@@ -1,0 +1,72 @@
+#! /bin/bash
+
+indec=2
+default_increase=10
+default_decrease=10
+
+while getopts id OPT
+ do
+  case "$OPT" in
+   i)
+     indec=1
+     ;;
+   d)
+     indec=0
+     ;;
+  esac
+  shift
+done
+
+case $indec in
+ 0)
+  if [ "$#" -ge 1 ] 
+   then
+    xbacklight -dec "$1"
+   else
+    echo "Press any key to stop decreasing backlight brightness "
+    while true
+     do
+      stat=$(xbacklight -get)
+      if [ ${stat%.*} -le 6 ] || read -t 0.1 response
+       then
+        break
+       else
+        xbacklight -dec 5
+      fi
+    done
+  fi
+  ;;
+ 1)
+  if [ "$#" -ge 1 ] 
+   then
+    xbacklight -inc "$1"
+   else
+   echo "Press any key to stop increasing backlight brightness "
+    while true
+     do
+      stat=$(xbacklight -get)
+      if [ ${stat%.*} -ge 100 ] || read -t 0.1 response
+       then
+        break
+       else
+        xbacklight -inc 5
+      fi
+    done
+  fi
+  ;;
+ 2)
+  if [ "$#" -ge 1 ] 
+   then
+    xbacklight -set "$1"
+   else
+    stat=$(xbacklight -get)
+    if [ ${stat%.*} -ge 20 ]
+     then
+      xbacklight -set "1"
+     else
+      xbacklight -set "80"
+    fi
+  fi
+esac
+  
+echo "Backlight level changed to $(xbacklight -get)"
