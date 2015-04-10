@@ -2,4 +2,4 @@
 
 dir=$(pwd)
 
-sed -i "s-^\(export WORKBENCH=\).*-\1\"$dir\"-" ~/.bashrc
+sed -i "s@^\(export WORKBENCH=\).*@\1\"$dir\"@" ~/.bashrc

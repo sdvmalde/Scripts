@@ -42,6 +42,6 @@ touch $episodes
 } 
 ' > ${episodes}.eps
 
-rm ${episodes}
+rm -rf ${episodes}
 
 cat "${episodes}.eps"
